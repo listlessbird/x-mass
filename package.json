@@ -1,0 +1,11 @@
+{
+  "name": "ext-x-mass-unfollow",
+  "type": "module",
+  "devDependencies": {
+    "@types/bun": "latest",
+    "chrome-types": "^0.1.297"
+  },
+  "peerDependencies": {
+    "typescript": "^5.0.0"
+  }
+}
