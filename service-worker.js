@@ -20,27 +20,40 @@ chrome.runtime.onInstalled.addListener(() => {
 });
 
 chrome.action.onClicked.addListener(async (tab) => {
-  if (tab.url.startsWith("https://x.com/")) {
-    const prevState = await chrome.action.getBadgeText({ tabId: tab.id });
-    const nextState = prevState === "ON" ? "OFF" : "ON";
+  console.log("Starting process");
 
-    await chrome.action.setBadgeText({
-      tabId: tab.id,
-      text: nextState,
-    });
+  const prevState = await chrome.action.getBadgeText({ tabId: tab.id });
+  const nextState = prevState === "ON" ? "OFF" : "ON";
+
+  chrome.action.setBadgeText({
+    tabId: tab.id,
+    text: nextState,
+  });
+
+  if (nextState === "ON") {
+    chrome.tabs.sendMessage(tab.id, { action: "start-process" });
   }
 });
 
 chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
   console.log("background msg: ", msg);
-  if (msg.username) {
+  if (msg.type === "gotUser" && msg.followingUrl) {
     chrome.tabs.query({ active: true, lastFocusedWindow: true }, (tabs) => {
       const currentTab = tabs[0];
-      const newUrl = `https://x.com/${msg.username}`;
-      console.log({ currentTab: currentTab, newUrl });
-      if (currentTab && currentTab.url !== newUrl) {
-        chrome.tabs.update(currentTab.id, { url: newUrl });
+      console.log({ currentTab: currentTab, newUrl: msg.followingUrl });
+      if (currentTab && currentTab.url !== msg.followingUrl) {
+        chrome.tabs.update(currentTab.id, { url: msg.followingUrl });
       }
+    });
+  }
+});
+
+chrome.commands.onCommand.addListener((command) => {
+  console.log("Command received:", command);
+  if (command === "Ctrl+M") {
+    chrome.runtime.reload();
+    chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+      chrome.tabs.reload(tabs[0].id);
     });
   }
 });
