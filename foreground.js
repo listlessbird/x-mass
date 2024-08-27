@@ -120,7 +120,7 @@ async function handleListFound() {
       } catch (error) {
         console.error(`Failed to unfollow user: ${error.message}`);
         console.log(user)
-        throw error
+        // throw error
       }
     }
   }
