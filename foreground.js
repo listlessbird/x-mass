@@ -9,7 +9,6 @@ function cleanupPreviousOperations() {
   if (urlChangeInterval) {
     clearInterval(urlChangeInterval);
   }
- 
 }
 
 function watchForUrlChanges() {
@@ -23,8 +22,7 @@ function watchForUrlChanges() {
   }, 1000);
 }
 async function run() {
-  const acceptableUrls = ["https://x.com/", "https://x.com/following"];
-
+  
   try {
     cleanupPreviousOperations();
 
@@ -83,7 +81,7 @@ function getUsernameFromPage() {
 }
 
 async function handleListFound() {
-  console.log("at handleListFound");
+  console.log("Starting handleListFound");
   const rootList = document.querySelector(
     'div[aria-label="Timeline: Following"]'
   );
@@ -93,61 +91,65 @@ async function handleListFound() {
     return;
   }
 
-  async function* scrollAndCount() {
-    let previousLength = 0;
-    while (true) {
-      const listItems = rootList.querySelectorAll(
-        'button[data-testid="UserCell"]'
-      );
-      const currentLength = listItems.length;
-      if (currentLength > previousLength) {
-        console.log(`${currentLength} users found in the following list`);
-        const lastItem = listItems[currentLength - 1];
-        lastItem.scrollIntoView();
-        previousLength = currentLength;
-        
+  let totalUnfollowed = 0;
 
-        console.log("currentLength", currentLength);
-        console.log("waiting 10 seconds");
-        await new Promise(resolve => setTimeout(resolve, 10 * 1000));
-        
-        yield currentLength;
-      } else {
-        console.log("No new items found, stopping");
-        return currentLength;
+  async function* userGenerator() {
+    while (true) {
+      const listItems = rootList.querySelectorAll('button[data-testid="UserCell"]');
+      for (const item of listItems) {
+        yield item;
       }
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      
+      const lastItem = listItems[listItems.length - 1];
+      lastItem.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      console.log("Scrolled to last item, waiting 5 seconds");
+      await new Promise(resolve => setTimeout(resolve, 5000));
     }
   }
 
-  const finalCount = await (async () => {
-    let lastCount = 0;
-    for await (const count of scrollAndCount()) {
-      lastCount = count;
+  async function unfollowLoop() {
+    console.log("Starting unfollow loop");
+    for await (const user of userGenerator()) {
+      console.log(`Attempting to unfollow user: ${user.textContent}`);
+      try {
+        await unfollowItem(user);
+        totalUnfollowed++;
+        console.log(`Successfully unfollowed ${totalUnfollowed} users so far`);
+        await new Promise(resolve => setTimeout(resolve, 2000)); 
+        console.log("Waiting 2 seconds before next unfollow");
+      } catch (error) {
+        console.error(`Failed to unfollow user: ${error.message}`);
+        console.log(user)
+        throw error
+      }
     }
-    return lastCount;
-  })();
-  
-   const listItems = rootList.querySelectorAll(
-        'button[data-testid="UserCell"]'
-      );
+  }
 
-    console.log("listItems", listItems);
+  unfollowLoop();
+}
 
+async function unfollowItem(item) {
+  // pass the `button[data-testid="UserCell"]` element to this function
 
-      const arr = Array.from(listItems);
+  const userlink = item.querySelector("a").href;
 
-      arr.slice(-5).forEach(item => {
-      
-        const userlink =  item.querySelector("a").href
-        
-        const username = userlink.split("/").pop();
-        console.log("username", username);
-      })
+  const username = userlink.split("/").pop();
 
+  console.log("Attempting to unfollow", username);
 
+  const btnBase = item.querySelector(`button[aria-label="Following @${username}"]`);
 
-  console.log(`Final count: ${finalCount} users in the following list`);
+  btnBase.click();
+
+  // modal should appear
+  await new Promise((resolve) => setTimeout(resolve, 1000));
+  const modal = document.querySelector('div[data-testid="confirmationSheetDialog"]')
+  const btnUnFollow = modal.querySelector('button[data-testid="confirmationSheetConfirm"]')
+
+  btnUnFollow.click();
+
+  console.log("should've unfollowed", username);
+  await new Promise((resolve) => setTimeout(resolve, 5000));
 }
 
 chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
