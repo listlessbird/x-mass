@@ -11,4 +11,8 @@ this is still work in progress
 5. open the website if youre redirected to the following page then its working as intended (check the console).
 6. remove the extension from the browser once you're done.
 
+<p align="center">
+    <img src="./assets/Untitled.png">
+</p>
+
 There are several bugs and things to be improved so be mindful of that.
